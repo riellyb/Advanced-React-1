@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
+import propTypes from 'prop-types';
 import Link from 'next/link';
 import Title from './styles/Title';
 import ItemStyles from './styles/ItemStyles';
@@ -7,8 +7,8 @@ import PriceTag from './styles/PriceTag';
 import formatMoney from '../lib/formatMoney';
 
 class Item extends Component {
-    static PropTypes = {
-        item: PropTypes.object.isRequired,
+    static propTypes = {
+        item: propTypes.object.isRequired,
     };
 
     render() {
