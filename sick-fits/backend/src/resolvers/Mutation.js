@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { randomBytes } = require('crypto');
 const { promisify } = require('util');
+const { transport, makeANiceEmail } = require('../mail');
 
 const Mutations = {
     async createItem(parent, args, context, info) {
@@ -10,6 +11,11 @@ const Mutations = {
         const item = await context.db.mutation.createItem(
             {
                 data: {
+                    user: {
+                        connect: {
+                            id: context.request.userId
+                        }
+                    },
                     ...args
                 }
             },
@@ -39,7 +45,9 @@ const Mutations = {
         // 1. find item
         const item = await context.db.query.item({ where }, `{ id title }`);
         // 2. check if they own item or have permissions
-        // TODO
+        if (!context.request.userId) {
+            throw new Error('You must be logged in to do that!');
+        }
         // 3. delete it
         return context.db.mutation.deleteItem({ where }, info);
     },
@@ -100,7 +108,7 @@ const Mutations = {
             where: { email: args.email }
         });
         if (!user) {
-            throw new Error('No such user found for email ${args.email}');
+            throw new Error(`No such user found for email ${args.email}`);
         }
         // set a reset token and expiry on that user
         const randomBytesPromisified = promisify(randomBytes);
@@ -111,6 +119,18 @@ const Mutations = {
             data: { resetToken, resetTokenExpiry }
         });
         // email them the reset token
+        const mailRes = await transport.sendMail({
+            from: 'brendanrielly@gmail.com',
+            to: user.email,
+            subject: 'Your password reset token',
+            html: makeANiceEmail(
+                `Your password reset token is here \n\n <a href="${
+                    process.env.FRONTEND_URL
+                }/reset?resetToken=${resetToken}">Click Here to Reset Password</a>`
+            )
+        });
+
+        return { message: 'Thanks!' };
     },
     async resetPassword(parent, args, context, info) {
         // check if passwords match
